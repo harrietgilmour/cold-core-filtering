@@ -88,15 +88,17 @@ def add_CC_PF_columns(tracks):
     """Adds columns to the tracks dataframe for precip + cold core statistics"""
 
     # Add columns for precipitation statistics to later append to
-    tracks['total_precip'] = 0
-    tracks['rain_flag'] = 0
-    tracks['convective_precip'] = 0
-    tracks['heavy_precip'] = 0
-    tracks['extreme_precip'] = 0
-    tracks['heavy_rain_flag'] = 0
-    tracks['extreme_rain_flag'] = 0
-    tracks['max_precip'] = 0
-    tracks['mean_precip'] = 0
+    tracks['total_precip'] = 0 #total precip from any precipitating pixel
+    tracks['rain_flag'] = 0 # total number of pixels that meet the 1mm/hr threshold
+    tracks['convective_precip'] = 0 # total rain from all pixels where the rainfall threshold of 1 mm/hr is met
+    tracks['heavy_precip'] = 0 # total rain from all pixels where the heavy rainfall threshold of 10 mm/hr is met
+    tracks['extreme_precip'] = 0 # total rain from all pixels where the extreme rainfall threshold of 50 mm/hr is met
+    tracks['heavy_rain_flag'] = 0 # total number of pixels that meet the 10 mm/hr threshold
+    tracks['extreme_rain_flag'] = 0 # total number of pixels that meet the 50 mm/hr threshold
+    tracks['max_precip'] = 0 # maximum rainfall rate found over the masked area at that timstep
+    tracks['mean_precip_total'] = 0 # mean rainfall rate found over whole masked area (including non rainy pixels)
+    tracks['mean_precip'] = 0 # mean rainfall rate found over pixels that meet the precipitation threshold (> 1 mm/hr)
+
 
     # Add columns for cold core statistics to later append to
     tracks['tb_min'] = 0
@@ -264,7 +266,10 @@ def find_precipitation_types(subset, precip_values, feature_id, frame, precip_th
     subset['max_precip'][(subset.feature == feature_id) & (subset.frame == frame)] = np.max(precip_values)
 
     # Mean precip within the cell at that timestep
-    subset['mean_precip'][(subset.feature == feature_id) & (subset.frame == frame)] = np.mean(precip_values)
+    subset['mean_precip_total'][(subset.feature == feature_id) & (subset.frame == frame)] = np.mean(precip_values)
+
+    # Mean precip within the precipitating pixels at that timestep
+    subset['mean_precip'][(subset.feature == feature_id) & (subset.frame == frame)] = np.mean(precip_values[precip_values > precip_threshold])
 
     return subset
 

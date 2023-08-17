@@ -101,10 +101,10 @@ def add_CC_PF_columns(tracks):
     # Add columns for cold core statistics to later append to
     tracks['tb_min'] = 0
     tracks['tb_mean'] = 0
-    tracks['cold_core_flag'] = 0
     tracks['tb_210'] = 0
     tracks['tb_200'] = 0
     tracks['tb_190'] = 0
+    tracks['tb_180'] = 0
 
     return tracks
 
@@ -138,7 +138,7 @@ def select_subset(tracks, cell):
 
 # Create a function for finding the corresponding frames
 # Within the mask and precip datasets
-def find_corresponding_frames(mask, precip, frame):
+def find_corresponding_frames(mask, precip, frame, tb):
 
     # Find the segmentation mask which occurs in the same frame
     # as the new value
@@ -148,7 +148,10 @@ def find_corresponding_frames(mask, precip, frame):
     # as the new value
     prec = precip[frame, :, :]
 
-    return seg, prec
+    # Find the tb values which occur in the same frame as the new value
+    brightness_temp = tb[frame, :, :]
+
+    return seg, prec, brightness_temp
 
 
 # Define a function for assigning the feature id's
@@ -192,6 +195,7 @@ def create_coordinates(seg_mask):
     seg_mask.coords['mask'] = (('latitude', 'longitude'), seg_mask.data)
 
     return seg_mask
+
 
 # Define a function which finds the precipitation values
 # within the selected segmentation mask area
@@ -268,10 +272,10 @@ def find_precipitation_types(subset, precip_values, feature_id, frame, precip_th
 # Define a function which finds the tb values
 # within the selected segmentation mask area
 # with no nan values
-def find_tb_values(seg_mask, tb):
+def find_tb_values(seg_mask, brightness_temp):
 
     # Apply the mask to the precipitation data
-    values_tb = tb.where(seg_mask.coords['mask'].values > 0)
+    values_tb = brightness_temp.where(seg_mask.coords['mask'].values > 0)
     array_tb = values_tb.values.flatten()
     values_tb = array_tb[~np.isnan(array_tb)] #Tb values in 1D array format to use in section below:
 
@@ -300,6 +304,8 @@ def find_CC_thresholds(subset, values_tb, feature_id, frame):
 
     subset['tb_190'][(subset.feature == feature_id) & (subset.frame == frame)] = (values_tb[values_tb <= 190]).shape[0]
 
+    subset['tb_180'][(subset.feature == feature_id) & (subset.frame == frame)] = (values_tb[values_tb <= 180]).shape[0]
+
     return subset
 
 
@@ -317,7 +323,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
             print("The mask shape is equal to the precip shape")
 
             # Find the segmentation mask which occurs in the same frame
-            seg, prec = find_corresponding_frames(mask, precip, frame)
+            seg, prec, brightness_temp = find_corresponding_frames(mask, precip, frame, tb)
 
             # Assign the feature id to the subset features at each frame
             # of the cells lifetime
@@ -354,7 +360,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
 
                 ## COLD CORE FILTERING AND STATISTICS: ##
-                values_tb = find_tb_values(seg_mask, tb)
+                values_tb = find_tb_values(seg_mask, brightness_temp)
 
                 # find the mean and min tb values
                 subset = tb_min_mean(subset, values_tb, feature_id, frame)
@@ -364,7 +370,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
                 # Checking whether the cold core threshld is met
                 if values_tb.min() <= cold_threshold:
-                    cold_core_flag.append([1])
+                    cold_core_flag.append(1)
 
                 # Checking whether the number of precipitating pixels
                 # exceeds the minimum area threshold for rain
@@ -438,27 +444,21 @@ def main():
 
     # If the cold core flag is equal to zero
     # Then there is no cold core within the cell
-    if cold_core_flag == 0:
+    if cold_core_flag < 6 and precipitation_flag == 0: ##CHANGE THIS BACK TO COLD_CORE_FLAG == 0 IF WE DON'T WANT THE COLD CORE TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        #save subset to deleted tracks folder
-        subset.to_hdf('Save/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
-
-
-    # If the precipitation flag is equal to zero
-    # Then there is no precipitation within the cell
-    if precipitation_flag == 0:
-        subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('Save/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
-
-    # Print the number of cells which have been removed
-    #print("The number of cells which have been removed is: ", removed_tracks)
+        subset.to_hdf('Save/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
-    #if precipitation_flag != 0:
-
-        # save tracks to CC&PF folder as it meets the cold core and precip requirements
-        subset.to_hdf('Save/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
-        print('Saved file for cell {}'.format(cell))
+        if cold_core_flag < 6: ##CHANGE THIS LINE BACK TO ==0 TOO
+            subset = subset.drop(subset[subset.cell == cell].index)
+            subset.to_hdf('Save/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        elif precipitation_flag == 0:
+            subset = subset.drop(subset[subset.cell == cell].index)
+            subset.to_hdf('Save/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        else:
+            subset.to_hdf('Save/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            print('Saved file for cell {}'.format(cell))
+ 
 
 #Run the main function
 if __name__ == "__main__":

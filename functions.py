@@ -490,6 +490,32 @@ def get_mcs_diss(mcstracks):
 #plt.yticks(fontsize=16)
 #plt.legend(loc='best',fontsize=12)
 
+# function for MCS peak maturity time (based on maximum precip)
+def get_mcs_max_precip(mcstracks): 
+    mcstracks['hour'] = mcstracks.datetime.dt.hour
+    rain_peak=[]
+    for cell in np.unique(mcstracks.cell.values):
+        subset = mcstracks[mcstracks.cell == cell]
+        peak = np.nanmax(subset.total_precip.values)
+        hour = subset[subset.total_precip == peak].hour.values[0]
+        rain_peak.append(hour)
+    rain_histo = np.histogram(rain_peak, bins = np.arange(0,25))
+    return rain_histo[0]
+
+
+# function for MCS peak maturity time (based on minimum Tb)
+def get_mcs_min_tb(mcstracks): 
+    mcstracks['hour'] = mcstracks.datetime.dt.hour
+    tb_peak=[]
+    for cell in np.unique(mcstracks.cell.values):
+        subset = mcstracks[mcstracks.cell == cell]
+        peak = np.nanmin(subset.tb_min.values)
+        hour = subset[subset.tb_min == peak].hour.values[0]
+        tb_peak.append(hour)
+    tb_histo = np.histogram(tb_peak, bins = np.arange(0,25))
+    return tb_histo[0]
+
+
 
 #function to calculate velocity/propagation speed of MCSs
 """

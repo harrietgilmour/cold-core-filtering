@@ -51,8 +51,8 @@ echo "array of unique values: ${unique_values_array}"
 mask_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
 mask_file="mask_${year}_${month}.nc"
 
-precip_dir="/data/users/hgilmour/total_precip/precip_1h"
-precip_file="precip_${year}_${month}.nc"
+precip_dir="/scratch/hgilmour/total_precip/2005"
+precip_file="total_precip_${year}_${month}.nc"
 
 tracks_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
 tracks_file="tracks_${year}_${month}.h5"
@@ -60,11 +60,15 @@ tracks_file="tracks_${year}_${month}.h5"
 tb_dir="/data/users/hgilmour/tb/2005"
 tb_file="tb_${year}_${month}.nc"
 
+w_dir="/data/users/hgilmour/omega/2005/jan_2005_new_combine"
+w_file="omega_merge_${month}_${year}_NEWMERGE1.nc"
+
 # form the file paths
 mask=${mask_dir}/${mask_file}
 precip=${precip_dir}/${precip_file}
 tracks=${tracks_dir}/${tracks_file}
 tb=${tb_dir}/${tb_file}
+vert_vel=${w_dir}/${w_file}
 
 # loop over the cells
 for cell in ${unique_values_array[@]}; do
@@ -73,6 +77,7 @@ for cell in ${unique_values_array[@]}; do
     echo $mask
     echo $precip
     echo $tracks
+    echo $vert_vel
     echo $tb
 
     # FIND THE SYNTAX FOR SBBATCH ON MET OFFICE PAGE
@@ -81,7 +86,7 @@ for cell in ${unique_values_array[@]}; do
     OUTPUT_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$month.$cell.out"
     ERROR_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$month.$cell.err"
 
-    sbatch --mem=100000 --ntasks=4 --time=20 --output=$OUTPUT_FILE --error=$ERROR_FILE $EXTRACTOR $mask $precip $tracks $tb $cell
+    sbatch --mem=100000 --ntasks=4 --time=20 --output=$OUTPUT_FILE --error=$ERROR_FILE $EXTRACTOR $mask $precip $tracks $tb $vert_vel $cell
 
 done
 

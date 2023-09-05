@@ -49,7 +49,7 @@ import dictionaries as dic
 # Write a function which will check the number of arguements passed
 def check_no_args(args):
     """Check the number of arguements passed"""
-    if len(args) != 6:
+    if len(args) != 7:
         print('Incorrect number of arguements')
         print('Usage: python single_cell_loop.py <YEAR> <MONTH> <CELL>')
         print('Example: python single_cell_loop.py 1998 01 12')
@@ -57,7 +57,7 @@ def check_no_args(args):
 
 
 # Write a function which loads the files
-def open_datasets(mask_file, precip_file, tracks_file, tb_file):
+def open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file):
     """Load specified files"""
 
     #Load mask file
@@ -75,7 +75,11 @@ def open_datasets(mask_file, precip_file, tracks_file, tb_file):
     tb = xr.open_dataset(tb_file)
     tb = tb.toa_outgoing_longwave_flux
 
-    return mask, precip, tracks, tb
+    vert_vel = xr.open_dataset(w_file)
+    vert_vel = vert_vel.dz_dt
+    vert_vel = vert_vel[:-1,:,1:,:]
+
+    return mask, precip, tracks, tb, vert_vel
 
 
 #Create a function to copy the tracks file
@@ -103,10 +107,28 @@ def add_CC_PF_columns(tracks):
     # Add columns for cold core statistics to later append to
     tracks['tb_min'] = 0
     tracks['tb_mean'] = 0
-    tracks['tb_210'] = 0
-    tracks['tb_200'] = 0
-    tracks['tb_190'] = 0
-    tracks['tb_180'] = 0
+    tracks['tb_210'] = 0 # no. pixels that meet the 210 threshold
+    tracks['tb_200'] = 0 # no. pixels that meet the 200 threshold
+    tracks['tb_190'] = 0 # no. pixels that meet the 190 threshold
+    tracks['tb_180'] = 0 # no. pixels that meet the 180 threshold
+
+    # Add columns for vertical velocity statistics to append to 
+    tracks['w_max'] = float('NaN') # maximum vertical velocity (maximum updraft)
+    tracks['w_min'] = float('NaN') # minimum vertical velocity (maximum downdraft)
+    tracks['w_mean'] = float('NaN') # mean vertical velocity
+    tracks['w_mean_up'] = float('NaN') # mean vertical velocity of only positive values (i.e. upward motion)
+    tracks['w_mean_down'] = float('NaN') # mean vertical velocity of only negative values (i.e. downward motion)
+    tracks['w_up_area'] = float('NaN') # no. pixels where there is a positive vertical velocity 
+    tracks['w_down_area'] = float('NaN') #no. pixels where there is a negative vertical velocity
+    tracks['w_0.1_up'] = float('NaN') # no. pixels that have a vertical velocity greater than 0.1
+    tracks['w_1_up'] = float('NaN')
+    tracks['w_5_up'] = float('NaN')
+    tracks['w_0.1_down'] = float('NaN') # no. pixels that have a vertical velocity less than -0.1
+    tracks['w_1_down'] = float('NaN')
+    tracks['w_5_down'] = float('NaN')
+
+    # Add column for datetime
+    tracks['datetime'] = 0
 
     return tracks
 
@@ -313,15 +335,70 @@ def find_CC_thresholds(subset, values_tb, feature_id, frame):
 
     return subset
 
+# Define a function that finds the corresponding frame within the vertical velocity dataset
+def find_vert_vel_frame(vert_vel, w_frame):
+    vel_w = vert_vel[w_frame,:,:,:]
 
+    return vel_w
+
+
+# Define a function which finds vertical velocity values within the segmented area
+def find_w_values(seg_mask, vel_w):
+    values_vel = vel_w.where(seg_mask.coords['mask'].values > 0) # extract only the w values within the segmented cell
+    array_vel = values_vel.values.flatten()
+    values_vel = array_vel[~np.isnan(array_vel)] # convert the
+
+    return values_vel
+
+
+# Define a function which finds the max and min w values 
+def w_max_min(subset, values_vel, feature_id, frame):
+    subset['w_max'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel.max() #maximum vertical velocity over the segmented area
+
+    subset['w_min'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel.min() #minimum vertical velocity over the segmented area
+
+    subset['w_mean'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel.mean() # mean vertical velocity over the segmented area
+
+    w_up = values_vel[values_vel > 0] # isolating just positive values of w (just upward motion and not downward)
+
+    subset['w_mean_up'][(subset.feature == feature_id) & (subset.frame == frame)] = w_up.mean() # mean upward vertical velocity over the segmented area
+
+    w_down = values_vel[values_vel < 0] # isolating just positive values of w (just downward motion and not upward)
+
+    subset['w_mean_down'][(subset.feature == feature_id) & (subset.frame == frame)] = w_down.mean() # mean downward vertical velocity over the segmented area
+
+    subset['w_up_area'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel > 0].shape[0]
+
+    subset['w_down_area'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel < 0].shape[0]    
+
+    return subset
+
+# Define a function which finds the number of pixels that meet certain vertical velocity thresholds
+def find_w_thresholds(subset, values_vel, feature_id, frame):
+    subset['w_0.1_up'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel >= 0.1].shape[0]
+
+    subset['w_1_up'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel >= 1].shape[0]
+
+    subset['w_5_up'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel >= 5].shape[0]
+
+    subset['w_0.1_down'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel <= -0.1].shape[0]
+
+    subset['w_1_down'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel <= -1].shape[0]
+
+    subset['w_5_down'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel <= -5].shape[0]
+
+    return subset
 
 # Create a function for the conditional image processing
-def image_processing(subset, precip, mask, subset_feature_frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold, s, precip_area, precipitation_flag, cold_threshold, cold_core_flag, tb):
+def image_processing(subset, precip, mask, subset_feature_frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold, s, precip_area, precipitation_flag, cold_threshold, cold_core_flag, tb, vert_vel, w_frame):
     """Conditional image processing statement"""
 
     # Add in the for loop here
     for frame in subset_feature_frame:
         print('frame', frame)
+
+        subset['datetime'][subset.frame == frame] = pd.to_datetime(subset['timestr'][subset.frame == frame]) # the time at the hourly frame
+
 
         # If the mask shape is equal to the precip shape
         if mask.shape == precip.shape:
@@ -385,7 +462,38 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
                 if rain_features >= precip_area:
                     precipitation_flag.append(rain_features)
 
-    return subset, precipitation_flag, cold_core_flag
+
+            ## VERTICAL VELOCITY STATISTICS: ##
+            vert_vel_df = pd.DataFrame()
+            vert_vel_df['datetime'] = vert_vel[:,:,:,:].t
+
+            for time in vert_vel_df['datetime'].dt.strftime('%Y-%m-%d %H:30:00'): # adding in the 30 so that its the hour of the vert_vel dataset + 30 mins to match up with the 1 hourly data
+
+                if subset['datetime'][subset.frame == frame].to_string(index=False)==time:
+
+                    for i in vert_vel_df.index:
+                        if (vert_vel[i,:,:,:].t.dt.strftime('%Y-%m-%d %H:30:00')) == time: #if the timestamp in the vert_vel dataset matches with the original frame timestamp...
+                            w_frame = i
+
+                            vel_w = find_vert_vel_frame(vert_vel, w_frame) #find the vertical velocity values for the frame in the vert_vel dataset that corresponds to the frame in the hourly datasets (i.e if the original frame is at 03:00, then find the w values in the vert_vel dataset that are also at 03:00. THEY WILL BE DIFFERENT FRAME NUMBERS BECAUSE THE ORIGINAL IS 1-HOURLY AND W IS 3-HOURLY!!!)
+
+                            print("original frame timestr", str(subset['timestr'][subset.frame == frame]))
+                            print("w frame number:", w_frame)
+                            print("w frame timestr:", str(vert_vel[w_frame,:,:,:].t))
+
+                            values_vel = find_w_values(seg_mask, vel_w)
+
+                            subset = w_max_min(subset, values_vel, feature_id, frame)
+
+                            subset = find_w_thresholds(subset, values_vel, feature_id, frame)
+
+                w_frame = w_frame + 1  #add 1 to the vertical_velocity frame ready for the next time the hours are the same
+
+            else:
+                print("Skipping this frame and assinging NaN") # if the hour doesn't correspond with one of the 3-hourly values, then assign NaNs to the dataframe   
+
+
+    return subset, precipitation_flag, cold_core_flag, w_frame
 
 
 #Define the main function / filerting loop:
@@ -397,7 +505,8 @@ def main():
     precip_file = str(sys.argv[2])
     tracks_file = str(sys.argv[3])
     tb_file = str(sys.argv[4])
-    cell = str(sys.argv[5])
+    w_file = str(sys.argv[5])
+    cell = str(sys.argv[6])
 
     #check the number of arguements
     check_no_args(sys.argv)
@@ -408,8 +517,11 @@ def main():
     #removed tracks set to 0
     removed_tracks = 0
 
+    #set w_frame to 0
+    w_frame = 0
+
     #first find the files
-    mask, precip, tracks, tb = open_datasets(mask_file, precip_file, tracks_file, tb_file)
+    mask, precip, tracks, tb, vert_vel = open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file)
 
     # make a copy of the tracks dataframe
     tracks = copy_tracks_file(tracks)
@@ -432,6 +544,7 @@ def main():
     # Create empty list for cold core flag to later append to in loop
     cold_core_flag = []
 
+
     # Loop over the feature values within the subset
     # Which is set by the current cell
     for feature in subset_features:
@@ -439,7 +552,7 @@ def main():
         subset_feature_frame = subset.frame[subset.feature == feature]
 
         # Do the image processing for each subset feature frame
-        subset, precipitation_flag, cold_core_flag = image_processing(subset, precip, mask, subset_feature_frame, dic.precip_threshold, dic.heavy_precip_threshold, dic.extreme_precip_threshold, dic.s, dic.precip_area, precipitation_flag, dic.cold_threshold, cold_core_flag, tb)
+        subset, precipitation_flag, cold_core_flag, w_frame = image_processing(subset, precip, mask, subset_feature_frame, dic.precip_threshold, dic.heavy_precip_threshold, dic.extreme_precip_threshold, dic.s, dic.precip_area, precipitation_flag, dic.cold_threshold, cold_core_flag, tb, vert_vel, w_frame)
 
     # Take the sum of the preciptation array
     precipitation_flag = np.sum(precipitation_flag)

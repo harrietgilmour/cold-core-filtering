@@ -66,7 +66,7 @@ def open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file):
 
     #Load precip file
     precip = xr.open_dataset(precip_file)
-    precip = precip.stratiform_rainfall_flux
+    precip = precip.unknown
 
     #Load tracks file
     tracks = pd.read_hdf(tracks_file, 'table')
@@ -129,6 +129,19 @@ def add_CC_PF_columns(tracks):
 
     # Add column for datetime
     tracks['datetime'] = 0
+
+    # Add columns for latitude and longitude of variable maxima / minima
+    tracks['max_precip_lat'] = 0 # the latitude of the pixel with the max precip within the cloud shield at that timestep
+    tracks['max_precip_lon'] = 0
+    tracks['min_tb_lat'] = 0
+    tracks['min_tb_lon'] = 0
+    tracks['max_w_up_lat'] = 0
+    tracks['max_w_up_lon'] = 0
+    tracks['max_w_down_lat'] = 0
+    tracks['max_w_down_lon'] = 0
+
+    # Add column for colocated pixels of cold core and precip
+    tracks['colocated_pixels'] = 0
 
     return tracks
 
@@ -228,19 +241,17 @@ def create_coordinates(seg_mask):
 def find_precip_values(seg_mask, prec):
 
     # Apply the mask to the precipitation data
-    precip_values = prec.where(seg_mask.coords['mask'].values > 0)
+    precip_values_1 = prec.where(seg_mask.coords['mask'].values > 0)
 
     # Convert the precip values into a 1D array
     # Converted from kg m-2 s-1 to mm hr-1
-    precip_values_array = precip_values.values.flatten() * 3600
-
-    # Convert the precip values array into a dask array
-    #precip_values_array = da.from_array(precip_values_array, chunks = 100)
+    precip_values_array = precip_values_1.values.flatten() * 3600
 
     # Remove any nan values from the array
     precip_values = precip_values_array[~np.isnan(precip_values_array)]
+    print("Type of precip values (original):", type(precip_values))
 
-    return precip_values
+    return precip_values, precip_values_1
 
 # Create a function to find the total precip and rain features
 # and set them to the tracks dataframe
@@ -248,6 +259,8 @@ def find_total_precip_and_rain_features(subset, precip_values, feature_id, frame
 
     # Find the total precip for the feature
     # First, values of 0 are removed to only consider precipitating pixels. # Then np.nansum is used to compute the sum of all precipitating values # within the mask.
+    print("Type of precip values:", type(precip_values))
+    print(precip_values)
     total_precip = np.nansum(precip_values[precip_values > 0])
 
     # Find the number of rain pixels within the mask which meet //
@@ -295,6 +308,14 @@ def find_precipitation_types(subset, precip_values, feature_id, frame, precip_th
 
     return subset
 
+# Define a function which finds the latitude and longitude values for the pixel with the maximum precip
+def find_precip_max_lat_lon(subset, precip_values_1, feature_id, frame):
+    subset['max_precip_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().latitude
+
+    subset['max_precip_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().longitude
+
+    return subset
+
 
 # Define a function which finds the tb values
 # within the selected segmentation mask area
@@ -302,11 +323,11 @@ def find_precipitation_types(subset, precip_values, feature_id, frame, precip_th
 def find_tb_values(seg_mask, brightness_temp):
 
     # Apply the mask to the precipitation data
-    values_tb = brightness_temp.where(seg_mask.coords['mask'].values > 0)
-    array_tb = values_tb.values.flatten()
+    values_tb_1 = brightness_temp.where(seg_mask.coords['mask'].values > 0)
+    array_tb = values_tb_1.values.flatten()
     values_tb = array_tb[~np.isnan(array_tb)] #Tb values in 1D array format to use in section below:
 
-    return values_tb
+    return values_tb, values_tb_1
 
 
 # Define a function which finds the mean and min tb values
@@ -335,6 +356,27 @@ def find_CC_thresholds(subset, values_tb, feature_id, frame):
 
     return subset
 
+
+# Define a function which finds the latitude and longitude values for the pixel with the minimum tb
+def find_tb_min_lat_lon(subset, values_tb_1, feature_id, frame):
+    subset['min_tb_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().latitude
+
+    subset['min_tb_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().longitude
+
+    return subset
+
+
+# Define a function which finds the number of colocated pixels that meet both precip and Tb criteria
+def find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask):
+    prec = prec * 3600 # converting from kg m-2 s-1 to mm/hr
+
+    colocated = prec.where((prec >= 1) & (brightness_temp <= 200) & (seg_mask.coords['mask'].values > 0)) #finding only the locations where all tb and precip criteria are met
+
+    subset['colocated_pixels'][(subset.feature == feature_id) & (subset.frame == frame)] = colocated.values[~np.isnan(colocated)].shape[0]
+
+    return subset
+
+
 # Define a function that finds the corresponding frame within the vertical velocity dataset
 def find_vert_vel_frame(vert_vel, w_frame):
     vel_w = vert_vel[w_frame,:,:,:]
@@ -344,11 +386,11 @@ def find_vert_vel_frame(vert_vel, w_frame):
 
 # Define a function which finds vertical velocity values within the segmented area
 def find_w_values(seg_mask, vel_w):
-    values_vel = vel_w.where(seg_mask.coords['mask'].values > 0) # extract only the w values within the segmented cell
-    array_vel = values_vel.values.flatten()
+    values_vel_1 = vel_w.where(seg_mask.coords['mask'].values > 0) # extract only the w values within the segmented cell
+    array_vel = values_vel_1.values.flatten()
     values_vel = array_vel[~np.isnan(array_vel)] # convert the
 
-    return values_vel
+    return values_vel, values_vel_1
 
 
 # Define a function which finds the max and min w values 
@@ -388,6 +430,20 @@ def find_w_thresholds(subset, values_vel, feature_id, frame):
     subset['w_5_down'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel[values_vel <= -5].shape[0]
 
     return subset
+
+
+# Define a function which finds the latitude and longitude values for the pixel with the maximum updraft and downdraft
+def find_w_max_min_lat_lon(subset, values_vel_1, feature_id, frame):
+    subset['max_w_up_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().latitude
+
+    subset['max_w_up_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().longitude
+
+    subset['max_w_down_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().latitude
+
+    subset['max_w_down_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().longitude    
+
+    return subset
+
 
 # Create a function for the conditional image processing
 def image_processing(subset, precip, mask, subset_feature_frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold, s, precip_area, precipitation_flag, cold_threshold, cold_core_flag, tb, vert_vel, w_frame):
@@ -431,7 +487,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
                 ## PRECIP FILERTING AND STATISTICS: ##
                 # Find the precipitation values within the selected segmentation mask area
-                precip_values = find_precip_values(seg_mask, prec)
+                precip_values, precip_values_1 = find_precip_values(seg_mask, prec)
 
                 # Find the total precip and rain features
                 subset, rain_features = find_total_precip_and_rain_features(subset, precip_values, feature_id, frame, precip_threshold)
@@ -440,15 +496,19 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
                 # add them to the tracks dataframe
                 subset = find_precipitation_types(subset, precip_values, feature_id, frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold)
 
+                subset = find_precip_max_lat_lon(subset, precip_values_1, feature_id, frame)
+
 
                 ## COLD CORE FILTERING AND STATISTICS: ##
-                values_tb = find_tb_values(seg_mask, brightness_temp)
+                values_tb, values_tb_1 = find_tb_values(seg_mask, brightness_temp)
 
                 # find the mean and min tb values
                 subset = tb_min_mean(subset, values_tb, feature_id, frame)
 
                 # find the areas associated with different cold core thresholds
                 subset = find_CC_thresholds(subset, values_tb, feature_id, frame)
+
+                subset = find_tb_min_lat_lon(subset, values_tb_1, feature_id, frame)
 
                 # Checking whether the cold core threshld is met
                 if values_tb.min() <= cold_threshold:
@@ -461,6 +521,8 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
                 if rain_features >= precip_area:
                     precipitation_flag.append(rain_features)
+
+                subset = find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask)
 
 
             ## VERTICAL VELOCITY STATISTICS: ##
@@ -481,11 +543,13 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
                             print("w frame number:", w_frame)
                             print("w frame timestr:", str(vert_vel[w_frame,:,:,:].t))
 
-                            values_vel = find_w_values(seg_mask, vel_w)
+                            values_vel, values_vel_1 = find_w_values(seg_mask, vel_w)
 
                             subset = w_max_min(subset, values_vel, feature_id, frame)
 
                             subset = find_w_thresholds(subset, values_vel, feature_id, frame)
+
+                            subset = find_w_max_min_lat_lon(subset, values_vel_1, feature_id, frame)
 
                 w_frame = w_frame + 1  #add 1 to the vertical_velocity frame ready for the next time the hours are the same
 

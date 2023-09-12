@@ -515,6 +515,18 @@ def get_mcs_min_tb(mcstracks):
     tb_histo = np.histogram(tb_peak, bins = np.arange(0,25))
     return tb_histo[0]
 
+# function for MCS peak maturity time (based on maximum updraft velocity)
+def get_mcs_max_w(mcstracks): 
+    mcstracks['hour'] = mcstracks.datetime.dt.hour
+    w_peak=[]
+    for cell in np.unique(mcstracks.cell.values):
+        subset = mcstracks[mcstracks.cell == cell]
+        peak = np.nanmax(subset.w_max.values)
+        hour = subset[subset.w_max == peak].hour.values[0]
+        w_peak.append(hour)
+    tb_histo = np.histogram(w_peak, bins = np.arange(0,25))
+    return tb_histo[0]
+
 
 
 #function to calculate velocity/propagation speed of MCSs

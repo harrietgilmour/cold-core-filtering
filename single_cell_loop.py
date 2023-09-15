@@ -446,7 +446,7 @@ def find_w_max_min_lat_lon(subset, values_vel_1, feature_id, frame):
 
 
 # Create a function for the conditional image processing
-def image_processing(subset, precip, mask, subset_feature_frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold, s, precip_area, precipitation_flag, cold_threshold, cold_core_flag, tb, vert_vel, w_frame):
+def image_processing(subset, precip, mask, subset_feature_frame, precip_threshold, heavy_precip_threshold, extreme_precip_threshold, s, precip_area, precipitation_flag, cold_threshold, cold_core_flag, tb, vert_vel, w_frame, rain_flag):
     """Conditional image processing statement"""
 
     # Add in the for loop here
@@ -521,6 +521,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
                 if rain_features >= precip_area:
                     precipitation_flag.append(rain_features)
+                    rain_flag.append(1)
 
                 subset = find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask)
 
@@ -557,7 +558,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
                 print("Skipping this frame and assinging NaN") # if the hour doesn't correspond with one of the 3-hourly values, then assign NaNs to the dataframe   
 
 
-    return subset, precipitation_flag, cold_core_flag, w_frame
+    return subset, precipitation_flag, cold_core_flag, w_frame, rain_flag
 
 
 #Define the main function / filerting loop:
@@ -608,6 +609,8 @@ def main():
     # Create empty list for cold core flag to later append to in loop
     cold_core_flag = []
 
+    # Create empty list for rain flag to later append to in loop (this is different to precip flag as this is just used to make sure there are at least 6 hours of rain > 1mm/hr over 10% of cloud shield)
+    rain_flag = []
 
     # Loop over the feature values within the subset
     # Which is set by the current cell
@@ -616,29 +619,32 @@ def main():
         subset_feature_frame = subset.frame[subset.feature == feature]
 
         # Do the image processing for each subset feature frame
-        subset, precipitation_flag, cold_core_flag, w_frame = image_processing(subset, precip, mask, subset_feature_frame, dic.precip_threshold, dic.heavy_precip_threshold, dic.extreme_precip_threshold, dic.s, dic.precip_area, precipitation_flag, dic.cold_threshold, cold_core_flag, tb, vert_vel, w_frame)
+        subset, precipitation_flag, cold_core_flag, w_frame, rain_flag = image_processing(subset, precip, mask, subset_feature_frame, dic.precip_threshold, dic.heavy_precip_threshold, dic.extreme_precip_threshold, dic.s, dic.precip_area, precipitation_flag, dic.cold_threshold, cold_core_flag, tb, vert_vel, w_frame, rain_flag)
 
     # Take the sum of the preciptation array
     precipitation_flag = np.sum(precipitation_flag)
+
+    # Take the sum of the rain flag array (different to precip flaf as this calculates the total amount of timesteps that meet the rain criteria)
+    rain_flag = np.sum(rain_flag)
 
     # Take the sum of the tb array
     cold_core_flag = np.sum(cold_core_flag)
 
     # If the cold core flag is equal to zero
     # Then there is no cold core within the cell
-    if cold_core_flag < 6 and precipitation_flag == 0: ##CHANGE THIS BACK TO COLD_CORE_FLAG == 0 IF WE DON'T WANT THE COLD CORE TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
+    if cold_core_flag < 6 and rain_flag < 6: ##CHANGE THIS BACK TO COLD_CORE_FLAG == 0 IF WE DON'T WANT THE COLD CORE TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('Save/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('Save/precip_6h/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
         if cold_core_flag < 6: ##CHANGE THIS LINE BACK TO ==0 TOO
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
-        elif precipitation_flag == 0:
+            subset.to_hdf('Save/precip_6h/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        elif rain_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('Save/precip_6h/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         else:
-            subset.to_hdf('Save/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('Save/precip_6h/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
             print('Saved file for cell {}'.format(cell))
  
 

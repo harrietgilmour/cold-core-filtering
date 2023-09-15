@@ -510,7 +510,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
                 subset = find_tb_min_lat_lon(subset, values_tb_1, feature_id, frame)
 
-                # Checking whether the cold core threshld is met
+                # Checking whether the cold core threshold is met
                 if values_tb.min() <= cold_threshold:
                     cold_core_flag.append(1)
 

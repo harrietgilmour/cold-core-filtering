@@ -634,17 +634,17 @@ def main():
     # Then there is no cold core within the cell
     if cold_core_flag < 6 and rain_flag < 6: ##CHANGE THIS BACK TO COLD_CORE_FLAG == 0 IF WE DON'T WANT THE COLD CORE TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('Save/precip_6h/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('Save/precip_6h_largea/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
         if cold_core_flag < 6: ##CHANGE THIS LINE BACK TO ==0 TOO
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/precip_6h/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('Save/precip_6h_largea/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         elif rain_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/precip_6h/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('Save/precip_6h_largea/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         else:
-            subset.to_hdf('Save/precip_6h/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('Save/precip_6h_largea/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
             print('Saved file for cell {}'.format(cell))
  
 

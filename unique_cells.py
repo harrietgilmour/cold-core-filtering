@@ -26,7 +26,7 @@ def check_no_args(args):
     if len(args) != 2:
         print('Incorrect number of arguements')
         print('Usage: python unqiue_cells.py <TRACKS_FILE>')
-        print('Example: python UNIQUE_CELLS.py /data/users/hgilmour/tracking/code/tobac_sensitivity/Save/Track_precip_test.h5')
+        print('Example: python UNIQUE_CELLS.py /data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracks_2005.h5')
         sys.exit(1)
 
 # Write a function which loads the file
@@ -81,6 +81,21 @@ def main():
     #check the number of arguements
     check_no_args(sys.argv)
 
+    #find the year of the file
+    filename = os.path.basename(tracks_file)
+    print("Type of filename:", type(filename))
+    print("Filename:", filename)
+    filename_without_extension = os.path.splitext(filename)
+    #print("Type of filename_without_extension:", type(filename_without_extension))
+    #print(filename_without_extension)
+    filename = filename.replace(".", "_")
+    segments = filename.split("_")
+    print(segments)
+    #segments = segments.split("_")
+    #print(segments)
+    year = segments[1]
+    print("year:", year)
+
     #first open the tracks dataset for 1 month
     tracks = open_dataset(tracks_file)
 
@@ -94,7 +109,7 @@ def main():
     print("The unique cells array is: ", unique_cells)
 
     # Save the unique cells array in the unique_cell_files directory
-    np.savetxt('/data/users/hgilmour/cold-core-filtering/unique_cell_files/unique_cells_2005_01.txt', unique_cells, fmt="%s")
+    np.savetxt('/data/users/hgilmour/cold-core-filtering/unique_cell_files/unique_cells_{}.txt'.format(year), unique_cells, fmt="%s")
     print('Saved unique cell array for file {}'.format(tracks_file))
 
 

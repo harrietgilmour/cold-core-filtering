@@ -57,8 +57,8 @@ precip_file="total_precip_${year}_${month}.nc"
 tracks_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
 tracks_file="tracks_${year}_${month}.h5"
 
-tb_dir="/data/users/hgilmour/tb/2005"
-tb_file="tb_${year}_${month}.nc"
+tb_dir="/data/users/hgilmour/tb"
+tb_file="tb_merge_${month}_${year}.nc"
 
 w_dir="/data/users/hgilmour/omega/2005/jan_2005_new_combine"
 w_file="omega_merge_${month}_${year}_NEWMERGE1.nc"

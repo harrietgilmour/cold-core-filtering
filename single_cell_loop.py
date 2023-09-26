@@ -367,10 +367,10 @@ def find_tb_min_lat_lon(subset, values_tb_1, feature_id, frame):
 
 
 # Define a function which finds the number of colocated pixels that meet both precip and Tb criteria
-def find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask):
+def find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask, cold_threshold):
     prec = prec * 3600 # converting from kg m-2 s-1 to mm/hr
 
-    colocated = prec.where((prec >= 1) & (brightness_temp <= 200) & (seg_mask.coords['mask'].values > 0)) #finding only the locations where all tb and precip criteria are met
+    colocated = prec.where((prec >= 1) & (brightness_temp <= cold_threshold) & (seg_mask.coords['mask'].values > 0)) #finding only the locations where all tb and precip criteria are met
 
     subset['colocated_pixels'][(subset.feature == feature_id) & (subset.frame == frame)] = colocated.values[~np.isnan(colocated)].shape[0]
 
@@ -523,7 +523,7 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
                     precipitation_flag.append(rain_features)
                     rain_flag.append(1)
 
-                subset = find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask)
+                subset = find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_mask, cold_threshold)
 
 
             ## VERTICAL VELOCITY STATISTICS: ##
@@ -632,12 +632,12 @@ def main():
 
     # If the cold core flag is equal to zero
     # Then there is no cold core within the cell
-    if cold_core_flag < 6 and rain_flag < 6: ##CHANGE THIS BACK TO COLD_CORE_FLAG == 0 IF WE DON'T WANT THE COLD CORE TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
+    if cold_core_flag < 6 and rain_flag < 6: ##COLD CORE AND PRECIP TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
         subset.to_hdf('Save/precip_6h_largea/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
-        if cold_core_flag < 6: ##CHANGE THIS LINE BACK TO ==0 TOO
+        if cold_core_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
             subset.to_hdf('Save/precip_6h_largea/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         elif rain_flag < 6:

@@ -17,10 +17,7 @@ fi
 year=$1
 
 # echo the year
-echo "Finding unique cells for month in year: $year"
-
-# Set the months
-months=(01 02 03 04 05 06 07 08 09 10 11 12)
+echo "Finding unique cells in year: $year"
 
 # set up the extractor script
 EXTRACTOR="/data/users/hgilmour/cold-core-filtering/submit.unique_cells.sh"
@@ -29,30 +26,26 @@ EXTRACTOR="/data/users/hgilmour/cold-core-filtering/submit.unique_cells.sh"
 # base directory is the directory where the tracks are stored
 # in format tracks_yyyy_mm.h5
 
-base_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
+base_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracking"
 
 
 # Set up the output directory
 OUTPUT_DIR="/data/users/hgilmour/cold-core-filtering/lotus_output/unique_cells"
 mkdir -p $OUTPUT_DIR
 
-# Loop over the months
-for month in ${months[@]}; do
     
-    echo $year
-    echo $month
+echo $year
 
-    # Find the tracks files for the given month
-    tracks_file="tracks_${year}_${month}.h5"
-    # construct the tracks path
-    tracks_path=${base_dir}/${tracks_file}
+# Find the tracks files for the given month
+tracks_file="tracks_${year}.h5"
+# construct the tracks path
+tracks_path=${base_dir}/${tracks_file}
 
-    # Set up the output files
-    OUTPUT_FILE="$OUTPUT_DIR/all_unique_cells.$year.$month.out"
-    ERROR_FILE="$OUTPUT_DIR/all_unique_cells.$year.$month.err"
+# Set up the output files
+OUTPUT_FILE="$OUTPUT_DIR/all_unique_cells.$year.out"
+ERROR_FILE="$OUTPUT_DIR/all_unique_cells.$year.err"
 
-    # submit the batch job
-    sbatch --mem=1000 --ntasks=4 --time=5 --output=$OUTPUT_FILE --error=$ERROR_FILE $EXTRACTOR $tracks_path
-    
-done
+# submit the batch job
+sbatch --mem=1000 --ntasks=4 --time=15 --output=$OUTPUT_FILE --error=$ERROR_FILE $EXTRACTOR $tracks_path
+
 

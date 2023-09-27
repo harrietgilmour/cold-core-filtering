@@ -637,7 +637,7 @@ def main():
     # Then there is no cold core within the cell
     if cold_core_flag < 6 and rain_flag < 6: ##COLD CORE AND PRECIP TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
         if cold_core_flag < 6:

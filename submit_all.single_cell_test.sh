@@ -2,23 +2,25 @@
 #
 # This script submits the jobs to run the single_cell_loop.py script
 #
-# Usage: bash submit_all.single_cell_test.sh <year>
+# Usage: bash submit_all.single_cell_test.sh <year> <month>
 #
 
 # Check that the correct no of args has been passed
-if [ $# -ne 1 ]; then
-    echo "Usage: submit_all.single_cell_test.bash <year>"
+if [ $# -ne 2 ]; then
+    echo "Usage: submit_all.single_cell_test.bash <year> <month>"
     exit 1
 fi
 
 # Extract the year and month from the command line
 year=$1
+month=$2
 
 echo $year
+echo $month
 
 # load the txt file
 txt_file_path="/data/users/hgilmour/cold-core-filtering/unique_cell_files"
-txt_file_name="unique_cells_${year}.txt"
+txt_file_name="unique_cells_${year}_${month}.txt"
 
 # form the file path
 txtfile=${txt_file_path}/${txt_file_name}
@@ -47,19 +49,19 @@ echo "array of unique values: ${unique_values_array}"
 
 # set up the mask, precip and tracks file
 mask_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/segmentation"
-mask_file="segmentation_yearly_${year}.nc"
+mask_file="segmentation_${year}_${month}.nc"
 
 precip_dir="/scratch/hgilmour/total_precip"
-precip_file="total_precip_${year}.nc"
+precip_file="total_precip_${year}_${month}.nc"
 
 tracks_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracking"
-tracks_file="tracks_${year}.h5"
+tracks_file="tracks_${year}_${month}.h5"
 
 tb_dir="/data/users/hgilmour/tb"
-tb_file="tb_${year}.nc"
+tb_file="tb_${year}_${month}.nc"
 
-w_dir="/scratch/hgilmour/omega_new"
-w_file="omega_${year}.nc"
+w_dir="/scratch/hgilmour/omega"
+w_file="omega_merge_${year}_${month}.nc"
 
 # form the file paths
 mask=${mask_dir}/${mask_file}
@@ -81,8 +83,8 @@ for cell in ${unique_values_array[@]}; do
     # FIND THE SYNTAX FOR SBBATCH ON MET OFFICE PAGE
 
     # Set up the output files
-    OUTPUT_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$month.$cell.out"
-    ERROR_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$month.$cell.err"
+    OUTPUT_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$cell.out"
+    ERROR_FILE="$OUTPUT_DIR/all_single_cells_test.$year.$cell.err"
 
     sbatch --mem=100000 --ntasks=4 --time=20 --output=$OUTPUT_FILE --error=$ERROR_FILE $EXTRACTOR $mask $precip $tracks $tb $vert_vel $cell
 

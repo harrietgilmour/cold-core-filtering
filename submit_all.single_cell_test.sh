@@ -2,25 +2,23 @@
 #
 # This script submits the jobs to run the single_cell_loop.py script
 #
-# Usage: bash submit_all.single_cell_test.sh <year> <month>
+# Usage: bash submit_all.single_cell_test.sh <year>
 #
 
 # Check that the correct no of args has been passed
-if [ $# -ne 2 ]; then
-    echo "Usage: submit_all.single_cell_test.bash <year> <month>"
+if [ $# -ne 1 ]; then
+    echo "Usage: submit_all.single_cell_test.bash <year>"
     exit 1
 fi
 
 # Extract the year and month from the command line
 year=$1
-month=$2
 
 echo $year
-echo $month
 
 # load the txt file
 txt_file_path="/data/users/hgilmour/cold-core-filtering/unique_cell_files"
-txt_file_name="unique_cells_${year}_${month}.txt"
+txt_file_name="unique_cells_${year}.txt"
 
 # form the file path
 txtfile=${txt_file_path}/${txt_file_name}
@@ -48,20 +46,20 @@ unique_values_array=$(cat $txtfile)
 echo "array of unique values: ${unique_values_array}"
 
 # set up the mask, precip and tracks file
-mask_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
-mask_file="mask_${year}_${month}.nc"
+mask_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/segmentation"
+mask_file="segmentation_yearly_${year}.nc"
 
-precip_dir="/scratch/hgilmour/total_precip/2005"
-precip_file="total_precip_${year}_${month}.nc"
+precip_dir="/scratch/hgilmour/total_precip"
+precip_file="total_precip_${year}.nc"
 
-tracks_dir="/data/users/hgilmour/tracking/code/tobac_sensitivity/Save"
-tracks_file="tracks_${year}_${month}.h5"
+tracks_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracking"
+tracks_file="tracks_${year}.h5"
 
 tb_dir="/data/users/hgilmour/tb"
-tb_file="tb_merge_${month}_${year}.nc"
+tb_file="tb_${year}.nc"
 
-w_dir="/scratch/hgilmour/omega/2005/jan_2005_new_combine"
-w_file="omega_merge_${month}_${year}_NEWMERGE1.nc"
+w_dir="/scratch/hgilmour/omega_new"
+w_file="omega_${year}.nc"
 
 # form the file paths
 mask=${mask_dir}/${mask_file}

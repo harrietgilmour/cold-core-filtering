@@ -95,6 +95,8 @@ def main():
     #print(segments)
     year = segments[1]
     print("year:", year)
+    month = segments[2]
+    print("month:", month)
 
     #first open the tracks dataset for 1 month
     tracks = open_dataset(tracks_file)
@@ -109,7 +111,7 @@ def main():
     print("The unique cells array is: ", unique_cells)
 
     # Save the unique cells array in the unique_cell_files directory
-    np.savetxt('/data/users/hgilmour/cold-core-filtering/unique_cell_files/unique_cells_{}.txt'.format(year), unique_cells, fmt="%s")
+    np.savetxt('/data/users/hgilmour/cold-core-filtering/unique_cell_files/unique_cells_{year}_{month}.txt', unique_cells, fmt="%s")
     print('Saved unique cell array for file {}'.format(tracks_file))
 
 

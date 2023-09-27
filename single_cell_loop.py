@@ -51,8 +51,8 @@ def check_no_args(args):
     """Check the number of arguements passed"""
     if len(args) != 7:
         print('Incorrect number of arguements')
-        print('Usage: python single_cell_loop.py <YEAR> <MONTH> <CELL>')
-        print('Example: python single_cell_loop.py 1998 01 12')
+        print('Usage: python single_cell_loop.py <MASK_FILE> <PRECIP_FILE> <TRACKS_FILE> <TB_FILE> <CELL>')
+        print('Example: python single_cell_loop.py <MASK_FILE> <PRECIP_FILE> <TRACKS_FILE> <TB_FILE> <CELL>')
         sys.exit(1)
 
 
@@ -637,17 +637,17 @@ def main():
     # Then there is no cold core within the cell
     if cold_core_flag < 6 and rain_flag < 6: ##COLD CORE AND PRECIP TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('Save/precip_6h_moving10pc_rain/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
 
     else:
         if cold_core_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/precip_6h_moving10pc_rain/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         elif rain_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('Save/precip_6h_moving10pc_rain/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
         else:
-            subset.to_hdf('Save/precip_6h_moving10pc_rain/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
             print('Saved file for cell {}'.format(cell))
  
 

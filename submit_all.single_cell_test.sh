@@ -49,19 +49,19 @@ echo "array of unique values: ${unique_values_array}"
 
 # set up the mask, precip and tracks file
 mask_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/segmentation"
-mask_file="segmentation_${year}_${month}.nc"
+mask_file="segmentation_yearly_${year}.nc" # a year because these ad the tracks were done in yearly chunks so frame numbers are also based on year
 
-precip_dir="/scratch/hgilmour/total_precip"
-precip_file="total_precip_${year}_${month}.nc"
+precip_dir="/scratch/hgilmour/total_precip/yearly_files"
+precip_file="total_precip_${year}.nc"
 
 tracks_dir="/data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracking"
 tracks_file="tracks_${year}_${month}.h5"
 
 tb_dir="/data/users/hgilmour/tb"
-tb_file="tb_${year}_${month}.nc"
+tb_file="tb_${year}.nc"
 
-w_dir="/scratch/hgilmour/omega"
-w_file="omega_merge_${year}_${month}.nc"
+w_dir="/scratch/hgilmour/omega_new"
+w_file="omega_${year}.nc"
 
 # form the file paths
 mask=${mask_dir}/${mask_file}

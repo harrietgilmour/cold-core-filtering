@@ -63,10 +63,12 @@ def open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file):
     #Load mask file
     mask = xr.open_dataset(mask_file)
     mask = mask.segmentation_mask
+    print(np.shape(mask))
 
     #Load precip file
     precip = xr.open_dataset(precip_file)
     precip = precip.unknown
+    print(np.shape(precip))
 
     #Load tracks file
     tracks = pd.read_hdf(tracks_file, 'table')
@@ -77,7 +79,7 @@ def open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file):
 
     vert_vel = xr.open_dataset(w_file)
     vert_vel = vert_vel.dz_dt
-    vert_vel = vert_vel[:-1,:,1:,:]
+    vert_vel = vert_vel[:,:,1:,:]
 
     return mask, precip, tracks, tb, vert_vel
 
@@ -455,6 +457,8 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
         subset['datetime'][subset.frame == frame] = pd.to_datetime(subset['timestr'][subset.frame == frame]) # the time at the hourly frame
 
+        print("Shape of mask:", np.shape(mask))
+        print("Shape of precip:", np.shape(precip))
 
         # If the mask shape is equal to the precip shape
         if mask.shape == precip.shape:
@@ -637,17 +641,17 @@ def main():
     # Then there is no cold core within the cell
     if cold_core_flag < 6 and rain_flag < 6: ##COLD CORE AND PRECIP TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/both/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/both/tracks_cell_{}.hdf'.format(cell), 'table')
 
     else:
         if cold_core_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/cold_core/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/cold_core/tracks_cell_{}.hdf'.format(cell), 'table')
         elif rain_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/precip/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/precip/tracks_cell_{}.hdf'.format(cell), 'table')
         else:
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/CC&PF/tracks_2005_01_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/CC&PF/tracks_cell_{}.hdf'.format(cell), 'table')
             print('Saved file for cell {}'.format(cell))
  
 

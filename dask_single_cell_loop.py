@@ -32,6 +32,7 @@ import scipy
 from scipy import ndimage
 from scipy.ndimage import label, generate_binary_structure
 import tobac #tobac package cloned from https://github.com/tobac-project/tobac.git
+import time
 
 #Import parallelisation packages
 import dask
@@ -620,12 +621,11 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
 #Define the main function / filerting loop:
 # Changing this from 'main' to 'process_mcs_cell' and giving cell as an input for dask
-def process_mcs_cell(cell):
+def process_mcs_cell(params):
     """Main function."""
 
     # First extract the arguements:
-    year = str(sys.argv[1])
-    month = str(sys.argv[2])
+    cell, year, month, mask, precip, tracks, tb, vert_vel = params
 
     #check the number of arguements
     check_no_args(sys.argv)
@@ -635,12 +635,6 @@ def process_mcs_cell(cell):
 
     #set w_frame to 0
     w_frame = 0
-
-    #first find the files corresponding to that year and month
-    mask_file, precip_file, tracks_file, tb_file, w_file = find_datasets(year, month)
-
-    #first find the files
-    mask, precip, tracks, tb, vert_vel = open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file)
 
     # make a copy of the tracks dataframe
     tracks = copy_tracks_file(tracks)
@@ -708,7 +702,7 @@ def process_mcs_cell(cell):
     
     print('Saved file for cell {}'.format(cell))
     
-    return cell, subset, save_folder
+    return (cell, subset, save_folder)
     
     
 
@@ -721,16 +715,41 @@ print(year)
 month = str(sys.argv[2])
 print(month)
 
+#first find the files corresponding to that year and month
+mask_file, precip_file, tracks_file, tb_file, w_file = find_datasets(year, month)
+
+#first find the files
+mask, precip, tracks, tb, vert_vel = open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file)
+
+
 # Use the year and month to generate a list of unique cell numbers for that specific month
 cell_numbers = find_unique_cells(year, month)
 print(cell_numbers)
 
+# create list of all parameters
+param_list = []
+for i, cell_no in enumerate(cell_numbers):
+    param_list.append(cell_no, year, month, mask, precip, tracks, tb, vert_vel)
+
 # dask.bag is similar to a list, but allows the process_mcs_cell function to each unique cell number in the list in parallel using .map (as below)
-cell_bag = db.from_sequence(cell_numbers)
+cell_bag = db.from_sequence(param_list)
 print("Number of cells to process:", len(cell_numbers))
+
+tm = time.time() # used to calculate time taken to run (time at start of cell_bag.map())
 
 results = cell_bag.map(process_mcs_cell).compute(num_workers=24)
 print("Results:", results)
+
+print("Time taken:", (time.time() - tm)/60.) #time taken to run cell_bag.map().compute()
+
+cell_list = []
+subset_list = []
+save_folder_list = []
+for result in results:
+    cell, subset, save_folder = result
+    cell_list.append(cell)
+    subset_list.append(subset)
+    save_folder_list.append(save_folder)
 
 
 

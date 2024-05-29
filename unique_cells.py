@@ -2,7 +2,7 @@
 #
 # <USAGE> python unique_cells.py <TRACKS_FILE>
 #
-# <EXAMPLE> python unique_cells.py /data/users/hgilmour/tracking/code/tobac_sensitivity/Save/Track_precip_test.h5
+# <EXAMPLE> python unique_cells.py /project/cssp_brazil/mcs_tracking_HG/init_tracks_obs/tracks_2006_01.h5
 #
 
 
@@ -26,7 +26,7 @@ def check_no_args(args):
     if len(args) != 2:
         print('Incorrect number of arguements')
         print('Usage: python unqiue_cells.py <TRACKS_FILE>')
-        print('Example: python UNIQUE_CELLS.py /data/users/hgilmour/initial_tracks/tobac_initial_tracks/tracks_2005.h5')
+        print('Example: python UNIQUE_CELLS.py /project/cssp_brazil/mcs_tracking_HG/init_tracks_obs/tracks_2006_01.h5')
         sys.exit(1)
 
 # Write a function which loads the file
@@ -111,7 +111,7 @@ def main():
     print("The unique cells array is: ", unique_cells)
 
     # Save the unique cells array in the unique_cell_files directory
-    np.savetxt('/data/users/hgilmour/cold-core-filtering/unique_cell_files/unique_cells_{year}_{month}.txt', unique_cells, fmt="%s")
+    np.savetxt('/project/cssp_brazil/mcs_tracking_HG/CPM_HINDCAST_TRACKS/unique_cells/unique_cells_{}_{}_INTERP.txt'.format(year, month), unique_cells, fmt="%s")
     print('Saved unique cell array for file {}'.format(tracks_file))
 
 

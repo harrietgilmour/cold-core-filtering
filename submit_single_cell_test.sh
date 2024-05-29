@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --mem=100000
-#SBATCH --ntasks=4
-#SBATCH --time=60
+#SBATCH --mem=5000
+#SBATCH --ntasks=2
+#SBATCH --time=5
 
 #Extract args from command line
 mask_file=$1

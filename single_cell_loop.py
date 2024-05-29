@@ -78,8 +78,9 @@ def open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file):
     tb = tb.toa_outgoing_longwave_flux
 
     vert_vel = xr.open_dataset(w_file)
+    #vert_vel = vert_vel.upward_air_velocity #1998
     vert_vel = vert_vel.dz_dt
-    vert_vel = vert_vel[:,:,1:,:]
+    #vert_vel = vert_vel[:,1:,:]
 
     return mask, precip, tracks, tb, vert_vel
 
@@ -170,7 +171,7 @@ def check_unique_cell_number(cell):
 def select_subset(tracks, cell):
     """Select a subset of the tracks dataframe that just keeps rows for 1 cell"""
 
-    subset = tracks[tracks.cell == int(cell)] #NEED TO CHANGE THIS BACK TO 'CELL' RATHER THAN 12
+    subset = tracks[tracks.cell == int(cell)]
     print(subset)
 
     return subset
@@ -312,9 +313,16 @@ def find_precipitation_types(subset, precip_values, feature_id, frame, precip_th
 
 # Define a function which finds the latitude and longitude values for the pixel with the maximum precip
 def find_precip_max_lat_lon(subset, precip_values_1, feature_id, frame):
-    subset['max_precip_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().latitude
 
-    subset['max_precip_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().longitude
+    if precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().latitude.values.shape == ():
+        subset['max_precip_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().latitude
+    else:
+        subset['max_precip_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().latitude.values[0]
+
+    if precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().longitude.values.shape == ():
+        subset['max_precip_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().longitude
+    else:
+        subset['max_precip_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = precip_values_1.where(precip_values_1==precip_values_1.max(), drop=True).squeeze().longitude.values[0]
 
     return subset
 
@@ -361,9 +369,16 @@ def find_CC_thresholds(subset, values_tb, feature_id, frame):
 
 # Define a function which finds the latitude and longitude values for the pixel with the minimum tb
 def find_tb_min_lat_lon(subset, values_tb_1, feature_id, frame):
-    subset['min_tb_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().latitude
 
-    subset['min_tb_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().longitude
+    if values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().latitude.values.shape == ():
+        subset['min_tb_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().latitude
+    else:
+        subset['min_tb_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().latitude.values[0]
+
+    if values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().longitude.values.shape == ():
+        subset['min_tb_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().longitude
+    else:
+        subset['min_tb_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_tb_1.where(values_tb_1==values_tb_1.min(), drop=True).squeeze().longitude.values[0]
 
     return subset
 
@@ -381,7 +396,7 @@ def find_colocated_pixels(subset, feature_id, frame, prec, brightness_temp, seg_
 
 # Define a function that finds the corresponding frame within the vertical velocity dataset
 def find_vert_vel_frame(vert_vel, w_frame):
-    vel_w = vert_vel[w_frame,:,:,:]
+    vel_w = vert_vel[w_frame,:,:]
 
     return vel_w
 
@@ -397,6 +412,7 @@ def find_w_values(seg_mask, vel_w):
 
 # Define a function which finds the max and min w values 
 def w_max_min(subset, values_vel, feature_id, frame):
+    
     subset['w_max'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel.max() #maximum vertical velocity over the segmented area
 
     subset['w_min'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel.min() #minimum vertical velocity over the segmented area
@@ -436,13 +452,26 @@ def find_w_thresholds(subset, values_vel, feature_id, frame):
 
 # Define a function which finds the latitude and longitude values for the pixel with the maximum updraft and downdraft
 def find_w_max_min_lat_lon(subset, values_vel_1, feature_id, frame):
-    subset['max_w_up_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().latitude
 
-    subset['max_w_up_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().longitude
+    if values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().latitude.values.shape == ():
+        subset['max_w_up_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().latitude
+    else:
+        subset['max_w_up_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().latitude.values[0]
 
-    subset['max_w_down_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().latitude
+    if values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().longitude.values.shape == ():
+        subset['max_w_up_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().longitude
+    else:
+        subset['max_w_up_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.max(), drop=True).squeeze().longitude.values[0]
 
-    subset['max_w_down_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().longitude    
+    if values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().latitude.values.shape == ():
+        subset['max_w_down_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().latitude
+    else:
+        subset['max_w_down_lat'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().latitude.values[0]
+
+    if values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().longitude.values.shape == ():
+        subset['max_w_down_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().longitude    
+    else:
+        subset['max_w_down_lon'][(subset.feature == feature_id) & (subset.frame == frame)] = values_vel_1.where(values_vel_1==values_vel_1.min(), drop=True).squeeze().longitude.values[0]
 
     return subset
 
@@ -533,21 +562,23 @@ def image_processing(subset, precip, mask, subset_feature_frame, precip_threshol
 
             ## VERTICAL VELOCITY STATISTICS: ##
             vert_vel_df = pd.DataFrame()
-            vert_vel_df['datetime'] = vert_vel[:,:,:,:].t
+            vert_vel_df['datetime'] = vert_vel[:,:,:].t
 
             for time in vert_vel_df['datetime'].dt.strftime('%Y-%m-%d %H:30:00'): # adding in the 30 so that its the hour of the vert_vel dataset + 30 mins to match up with the 1 hourly data
 
                 if subset['datetime'][subset.frame == frame].to_string(index=False)==time:
 
                     for i in vert_vel_df.index:
-                        if (vert_vel[i,:,:,:].t.dt.strftime('%Y-%m-%d %H:30:00')) == time: #if the timestamp in the vert_vel dataset matches with the original frame timestamp...
+                        if (vert_vel[i,:,:].t.dt.strftime('%Y-%m-%d %H:30:00')) == time: #if the timestamp in the vert_vel dataset matches with the original frame timestamp...
                             w_frame = i
 
                             vel_w = find_vert_vel_frame(vert_vel, w_frame) #find the vertical velocity values for the frame in the vert_vel dataset that corresponds to the frame in the hourly datasets (i.e if the original frame is at 03:00, then find the w values in the vert_vel dataset that are also at 03:00. THEY WILL BE DIFFERENT FRAME NUMBERS BECAUSE THE ORIGINAL IS 1-HOURLY AND W IS 3-HOURLY!!!)
 
                             print("original frame timestr", str(subset['timestr'][subset.frame == frame]))
                             print("w frame number:", w_frame)
-                            print("w frame timestr:", str(vert_vel[w_frame,:,:,:].t))
+                            print("w frame timestr:", str(vert_vel[w_frame,:,:].t))
+                            print("Shape of seg_mask:", mask.shape)
+                            print("Shape of vel w", vel_w.shape)
 
                             values_vel, values_vel_1 = find_w_values(seg_mask, vel_w)
 
@@ -578,6 +609,23 @@ def main():
     w_file = str(sys.argv[5])
     cell = str(sys.argv[6])
 
+    # We want to extract the month and year from the tb_file path
+    # An example of the path is:
+    # /data/users/hgilmour/tb/tb_2005.nc
+    # Extract the filename first
+    filename = os.path.basename(tb_file)
+    print("Type of filename:", type(filename))
+    print("Filename:", filename)
+
+    filename = filename.replace(".", "_")
+    segments = filename.split("_")
+    print(segments)
+
+    year = segments[2]
+
+    # Print the year
+    print("year", year)
+
     #check the number of arguements
     check_no_args(sys.argv)
 
@@ -592,6 +640,8 @@ def main():
 
     #first find the files
     mask, precip, tracks, tb, vert_vel = open_datasets(mask_file, precip_file, tracks_file, tb_file, w_file)
+
+    print("Shape of initial mask:", mask.shape)
 
     # make a copy of the tracks dataframe
     tracks = copy_tracks_file(tracks)
@@ -635,21 +685,20 @@ def main():
     # Take the sum of the tb array
     cold_core_flag = np.sum(cold_core_flag)
 
-    # If the cold core flag is equal to zero
     # Then there is no cold core within the cell
     if cold_core_flag < 6 and rain_flag < 6: ##COLD CORE AND PRECIP TO PERSIST FOR AT LEAST 6 HRS OF THE CELLS LIFETIME ##
         subset = subset.drop(subset[subset.cell == cell].index)
-        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/both/tracks_cell_{}.hdf'.format(cell), 'table')
+        subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/CPM_HINDCAST_TRACKS/final_tracks_CPM_INTERP/{}/deleted_tracks/both/tracks_cell_{}.hdf'.format(year, cell), 'table')
 
     else:
         if cold_core_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/cold_core/tracks_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/CPM_HINDCAST_TRACKS/final_tracks_CPM_INTERP/{}/deleted_tracks/cold_core/tracks_cell_{}.hdf'.format(year, cell), 'table')
         elif rain_flag < 6:
             subset = subset.drop(subset[subset.cell == cell].index)
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/deleted_tracks/precip/tracks_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/CPM_HINDCAST_TRACKS/final_tracks_CPM_INTERP/{}/deleted_tracks/precip/tracks_cell_{}.hdf'.format(year, cell), 'table')
         else:
-            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/final_tracks_CPM/2005/CC&PF/tracks_cell_{}.hdf'.format(cell), 'table')
+            subset.to_hdf('/project/cssp_brazil/mcs_tracking_HG/CPM_HINDCAST_TRACKS/final_tracks_CPM_INTERP/{}/CC&PF/tracks_cell_{}.hdf'.format(year, cell), 'table')
             print('Saved file for cell {}'.format(cell))
  
 
